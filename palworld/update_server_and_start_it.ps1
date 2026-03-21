@@ -1,15 +1,18 @@
-cls
+if ([Environment]::UserInteractive) { cls }
 # Starting Palworld Dedicated Server Update and Launch...
 
 # Set paths for SteamCMD and server installation - EDIT THE PATHS ACCORDINGLY
 $STEAMCMD_PATH = "C:\steamcmd\steamcmd.exe"
 $SERVER_PATH   = "C:\palworldserver"
-$PALWORLD_SERVER_NAME = "yourservernamehere"
+$PALWORLD_SERVER_NAME = "xenomenomop"
 $PALWORLD_PORT        = 8211
 
 # Log file path - named after this script with a timestamp
 $SCRIPT_BASENAME = [System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Path)
 $LOG_FILE = Join-Path $SERVER_PATH "${SCRIPT_BASENAME}_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+
+# Detect whether the script is running interactively or as a scheduled task / service
+$IS_INTERACTIVE = [Environment]::UserInteractive -and [Console]::In.Peek() -ne -1
 
 # -----------------------------------------------------------------------
 # Logging helper - writes to console and log file simultaneously
@@ -332,9 +335,27 @@ Write-NetworkInfo -Label "Post-Launch"
 
 Write-Log "Log saved to: $LOG_FILE" -Level "INFO" -Color Cyan
 
-Write-Host
-Write-Host "Server started successfully! Press Enter to stop the server and exit." -ForegroundColor Green
-Read-Host
-
-# User pressed Enter - stop the server
-Stop-ServerProcess -ProcessId $serverPid
+if ($IS_INTERACTIVE) {
+    # -----------------------------------------------------------------------
+    # Interactive mode - wait for user to press Enter then stop the server
+    # -----------------------------------------------------------------------
+    Write-Host
+    Write-Host "Server started successfully! Press Enter to stop the server and exit." -ForegroundColor Green
+    Read-Host
+    Write-Log "User requested shutdown." -Level "INFO" -Color Yellow
+    Stop-ServerProcess -ProcessId $serverPid
+} else {
+    # -----------------------------------------------------------------------
+    # Non-interactive mode (Task Scheduler / service) - monitor the server
+    # process and exit when it stops on its own
+    # -----------------------------------------------------------------------
+    Write-Log "Running in non-interactive mode - monitoring server process..." -Level "INFO"
+    while ($true) {
+        Start-Sleep -Seconds 30
+        $running = Get-Process -Id $serverPid -ErrorAction SilentlyContinue
+        if ($null -eq $running -or $running.HasExited) {
+            Write-Log "PalServer.exe (PID: $serverPid) is no longer running - script exiting." -Level "WARN" -Color Yellow
+            break
+        }
+    }
+}
