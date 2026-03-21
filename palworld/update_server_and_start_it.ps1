@@ -4,7 +4,7 @@ if ([Environment]::UserInteractive) { cls }
 # Set paths for SteamCMD and server installation - EDIT THE PATHS ACCORDINGLY
 $STEAMCMD_PATH = "C:\steamcmd\steamcmd.exe"
 $SERVER_PATH   = "C:\palworldserver"
-$PALWORLD_SERVER_NAME = "xenomenomop"
+$PALWORLD_SERVER_NAME = "yourservernamehere"
 $PALWORLD_PORT        = 8211
 
 # Log file path - named after this script with a timestamp
