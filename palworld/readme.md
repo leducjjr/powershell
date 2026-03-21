@@ -6,12 +6,12 @@ A PowerShell script that updates and launches a **Palworld Dedicated Server** on
 
 ## Requirements
 
-- Windows 10/11 or Windows Server
+- Windows XP or later (including Windows 10/11 and Windows Server)
 - PowerShell 5.1 or later
 - [SteamCMD](https://developer.valvesoftware.com/wiki/SteamCMD) installed
 - Palworld Dedicated Server files (installed by SteamCMD on first run)
 - Administrator privileges (recommended)
-	
+
 ---
 
 ## Configuration
@@ -82,6 +82,11 @@ Launches `PalServer.exe` with the following arguments:
 
 After launch, the script waits 3 seconds and checks whether the process has already exited — catching immediate crash-on-start scenarios before declaring success.
 
+Once running, the script keeps the window open and waits for input. Pressing **Enter** or **Ctrl+C** will shut down the server before exiting.
+
+### Server Shutdown
+When the script exits, it uses `taskkill /F /T` to force-terminate `PalServer.exe` and its entire process tree. This is necessary because PalServer spawns child processes on startup — killing only the parent would leave the actual server still running in the background. `taskkill /F /T` is compatible with Windows XP and later.
+
 ---
 
 ## Log Files
@@ -124,9 +129,3 @@ Another process (possibly a previous server instance) is holding the port. Use `
 
 **Script exits immediately without launching**
 Ensure you are running as Administrator. Some systems restrict `Start-Process` for non-admin users.
-
-# Example run-time screenshots
-<img width="1115" height="628" alt="image" src="https://github.com/user-attachments/assets/2e6fc836-fe2e-4869-9923-691f3678edfa" />
-
-<img width="1115" height="628" alt="image" src="https://github.com/user-attachments/assets/6e2c5eef-4204-4aba-8bfc-602d92545052" />
-
