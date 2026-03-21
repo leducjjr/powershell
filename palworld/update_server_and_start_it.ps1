@@ -1,9 +1,10 @@
+cls
 # Starting Palworld Dedicated Server Update and Launch...
 
 # Set paths for SteamCMD and server installation - EDIT THE PATHS ACCORDINGLY
 $STEAMCMD_PATH = "C:\steamcmd\steamcmd.exe"
 $SERVER_PATH   = "C:\palworldserver"
-$PALWORLD_SERVER_NAME = "yourservernamehere"
+$PALWORLD_SERVER_NAME = "xenomenomop"
 $PALWORLD_PORT        = 8211
 
 # Log file path - named after this script with a timestamp
@@ -207,6 +208,35 @@ Write-Log "File exists : $(Test-Path $serverExe)" -Level "DEBUG" -Color Gray
 Write-Log "Resolved    : $(Resolve-Path $serverExe -ErrorAction SilentlyContinue)" -Level "DEBUG" -Color Gray
 Write-Log "Working dir : $(Get-Location)" -Level "DEBUG" -Color Gray
 
+# -----------------------------------------------------------------------
+# Cleanup helper - stops the server process by PID
+# -----------------------------------------------------------------------
+function Stop-ServerProcess {
+    param([int]$ProcessId)
+    try {
+        # Verify the process is still running before attempting to stop it
+        $proc = Get-Process -Id $ProcessId -ErrorAction Stop
+        Write-Log "Stopping PalServer.exe and child processes (PID: $ProcessId)..." -Level "INFO" -Color Yellow
+
+        # Use taskkill /F /T to force-kill the entire process tree (PalServer spawns children)
+        $result = taskkill /F /T /PID $ProcessId 2>&1
+        Write-Log "taskkill: $result" -Level "INFO"
+
+        # Wait up to 10 seconds for the main process to fully exit
+        $proc.WaitForExit(10000) | Out-Null
+
+        if ($proc.HasExited) {
+            Write-Log "PalServer.exe and child processes stopped successfully." -Level "INFO" -Color Green
+        } else {
+            Write-Log "PalServer.exe did not exit within 10 seconds after taskkill." -Level "WARN" -Color Yellow
+        }
+    } catch [Microsoft.PowerShell.Commands.ProcessCommandException] {
+        Write-Log "PalServer.exe (PID: $ProcessId) is no longer running - no cleanup needed." -Level "INFO"
+    } catch {
+        Write-Log "Failed to stop PalServer.exe: $_" -Level "WARN" -Color Yellow
+    }
+}
+
 Write-Log "Launching PalServer.exe..." -Level "INFO"
 $serverProc = Start-Process -FilePath $serverExe -ArgumentList $serverArgs -NoNewWindow -PassThru
 
@@ -214,16 +244,29 @@ if ($null -eq $serverProc) {
     Throw-ErrorAndExit "Start-Process returned null - PalServer.exe could not be launched."
 }
 
-Start-Sleep -Seconds 3  # Brief pause to let process fail fast if it's going to
+Start-Sleep -Seconds 3  # Brief pause to let process fail fast if it is going to
 
 if ($serverProc.HasExited) {
     Write-Log "Process exited immediately with code: $($serverProc.ExitCode)" -Level "ERROR" -Color Red
     Throw-ErrorAndExit "PalServer.exe terminated immediately after launch (exit code $($serverProc.ExitCode))."
 }
 
-Write-Log "PalServer.exe launched successfully (PID: $($serverProc.Id))" -Level "INFO" -Color Green
+$serverPid = $serverProc.Id
+Write-Log "PalServer.exe launched successfully (PID: $serverPid)" -Level "INFO" -Color Green
 Write-Log "Log saved to: $LOG_FILE" -Level "INFO" -Color Cyan
 
+# Trap Ctrl+C so it also cleans up before exiting
+[System.Console]::add_CancelKeyPress({
+    param($s, $e)
+    $e.Cancel = $true
+    Write-Log "Interrupt received - shutting down server..." -Level "INFO" -Color Yellow
+    Stop-ServerProcess -ProcessId $serverPid
+    exit 0
+})
+
 Write-Host
-Write-Host "Server started successfully! You can close this window or press Enter to stop." -ForegroundColor Green
+Write-Host "Server started successfully! Press Enter or Ctrl+C to stop the server and exit." -ForegroundColor Green
 Read-Host
+
+# User pressed Enter - stop the server
+Stop-ServerProcess -ProcessId $serverPid
