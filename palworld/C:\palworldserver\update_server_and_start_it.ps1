@@ -1,0 +1,229 @@
+# Starting Palworld Dedicated Server Update and Launch...
+
+# Set paths for SteamCMD and server installation - EDIT THE PATHS ACCORDINGLY
+$STEAMCMD_PATH = "C:\steamcmd\steamcmd.exe"
+$SERVER_PATH   = "C:\palworldserver"
+$PALWORLD_SERVER_NAME = "xenomenomop"
+$PALWORLD_PORT        = 8211
+
+# Log file path - named after this script with a timestamp
+$SCRIPT_BASENAME = [System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Path)
+$LOG_FILE = Join-Path $SERVER_PATH "${SCRIPT_BASENAME}_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+
+# -----------------------------------------------------------------------
+# Logging helper - writes to console and log file simultaneously
+# -----------------------------------------------------------------------
+function Write-Log {
+    param(
+        [string]$Message,
+        [string]$Level = "INFO",   # INFO | WARN | ERROR | DEBUG | SECTION
+        [System.ConsoleColor]$Color = [System.ConsoleColor]::White
+    )
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+
+    if ($Level -eq "SECTION") {
+        $line = "=" * 60
+        $formatted = "`n$line`n  $Message`n$line"
+        Write-Host $formatted -ForegroundColor Cyan
+        Add-Content -Path $LOG_FILE -Value $formatted
+    } else {
+        $formatted = "[$timestamp] [$Level] $Message"
+        Write-Host $formatted -ForegroundColor $Color
+        Add-Content -Path $LOG_FILE -Value $formatted
+    }
+}
+
+# -----------------------------------------------------------------------
+# Helper to write error, log it, and exit
+# -----------------------------------------------------------------------
+function Throw-ErrorAndExit {
+    param([string]$Message, [int]$ExitCode = 1)
+    Write-Log "FATAL: $Message" -Level "ERROR" -Color Red
+    Write-Log "Script exiting with code $ExitCode" -Level "ERROR" -Color Red
+    Write-Host
+    Read-Host "Press Enter to exit"
+    exit $ExitCode
+}
+
+# -----------------------------------------------------------------------
+# Create log file and write header
+# -----------------------------------------------------------------------
+New-Item -ItemType File -Path $LOG_FILE -Force | Out-Null
+Write-Log "PALWORLD SERVER LAUNCH TRIAGE LOG" -Level "SECTION"
+Write-Log "Log file: $LOG_FILE" -Level "INFO" -Color Cyan
+
+# -----------------------------------------------------------------------
+# SECTION 1: System Information
+# -----------------------------------------------------------------------
+Write-Log "SYSTEM INFORMATION" -Level "SECTION"
+
+$os = Get-CimInstance Win32_OperatingSystem
+Write-Log "Hostname         : $($env:COMPUTERNAME)" -Level "INFO"
+Write-Log "OS               : $($os.Caption) $($os.Version)" -Level "INFO"
+Write-Log "Architecture     : $($env:PROCESSOR_ARCHITECTURE)" -Level "INFO"
+Write-Log "Current User     : $($env:USERNAME)" -Level "INFO"
+Write-Log "Is Admin         : $((New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))" -Level "INFO"
+Write-Log "PowerShell Ver   : $($PSVersionTable.PSVersion)" -Level "INFO"
+Write-Log "Script Start Time: $(Get-Date)" -Level "INFO"
+
+$ram = Get-CimInstance Win32_OperatingSystem
+$totalRamGB = [math]::Round($ram.TotalVisibleMemorySize / 1MB, 2)
+$freeRamGB  = [math]::Round($ram.FreePhysicalMemory / 1MB, 2)
+Write-Log "Total RAM        : ${totalRamGB} GB" -Level "INFO"
+Write-Log "Free RAM         : ${freeRamGB} GB" -Level "INFO"
+
+$cpu = Get-CimInstance Win32_Processor | Select-Object -First 1
+Write-Log "CPU              : $($cpu.Name)" -Level "INFO"
+Write-Log "CPU Cores        : $($cpu.NumberOfCores) cores / $($cpu.NumberOfLogicalProcessors) logical" -Level "INFO"
+
+# -----------------------------------------------------------------------
+# SECTION 2: Configuration
+# -----------------------------------------------------------------------
+Write-Log "SCRIPT CONFIGURATION" -Level "SECTION"
+Write-Log "STEAMCMD_PATH        : $STEAMCMD_PATH" -Level "INFO"
+Write-Log "SERVER_PATH          : $SERVER_PATH" -Level "INFO"
+Write-Log "PALWORLD_SERVER_NAME : $PALWORLD_SERVER_NAME" -Level "INFO"
+Write-Log "PALWORLD_PORT        : $PALWORLD_PORT" -Level "INFO"
+
+# -----------------------------------------------------------------------
+# SECTION 3: Path / File Validation
+# -----------------------------------------------------------------------
+Write-Log "PATH AND FILE VALIDATION" -Level "SECTION"
+
+# SteamCMD
+if (Test-Path -Path $STEAMCMD_PATH -PathType Leaf) {
+    $steamInfo = Get-Item $STEAMCMD_PATH
+    Write-Log "SteamCMD found     : $STEAMCMD_PATH" -Level "INFO" -Color Green
+    Write-Log "SteamCMD size      : $([math]::Round($steamInfo.Length / 1KB, 1)) KB" -Level "INFO"
+    Write-Log "SteamCMD modified  : $($steamInfo.LastWriteTime)" -Level "INFO"
+} else {
+    Write-Log "SteamCMD NOT FOUND : $STEAMCMD_PATH" -Level "ERROR" -Color Red
+    Throw-ErrorAndExit "steamcmd.exe not found at $STEAMCMD_PATH. Please verify the path."
+}
+
+# Server directory
+if (Test-Path -Path $SERVER_PATH -PathType Container) {
+    Write-Log "Server dir found   : $SERVER_PATH" -Level "INFO" -Color Green
+    $dirInfo = Get-ChildItem $SERVER_PATH -Recurse -ErrorAction SilentlyContinue
+    $dirSizeGB = [math]::Round(($dirInfo | Measure-Object -Property Length -Sum).Sum / 1GB, 2)
+    Write-Log "Server dir size    : ${dirSizeGB} GB ($($dirInfo.Count) files)" -Level "INFO"
+} else {
+    Write-Log "Server dir MISSING : $SERVER_PATH" -Level "ERROR" -Color Red
+    Throw-ErrorAndExit "Server directory not found at $SERVER_PATH. Please verify the path."
+}
+
+# PalServer.exe
+$serverExe = Join-Path $SERVER_PATH "PalServer.exe"
+if (Test-Path -Path $serverExe -PathType Leaf) {
+    $exeInfo = Get-Item $serverExe
+    Write-Log "PalServer.exe found   : $serverExe" -Level "INFO" -Color Green
+    Write-Log "PalServer.exe size    : $([math]::Round($exeInfo.Length / 1MB, 2)) MB" -Level "INFO"
+    Write-Log "PalServer.exe modified: $($exeInfo.LastWriteTime)" -Level "INFO"
+} else {
+    Write-Log "PalServer.exe NOT FOUND at: $serverExe" -Level "WARN" -Color Yellow
+    # Search common subdirectory locations
+    $candidates = @(
+        "Pal\Binaries\Win64\PalServer-Win64-Shipping-Cmd.exe",
+        "Pal\Binaries\Win64\PalServer.exe",
+        "Pal\Binaries\Win64\PalServer-Win64-Shipping.exe"
+    )
+    $found = $false
+    foreach ($candidate in $candidates) {
+        $candidatePath = Join-Path $SERVER_PATH $candidate
+        if (Test-Path $candidatePath) {
+            Write-Log "Alternative exe found: $candidatePath" -Level "WARN" -Color Yellow
+            Write-Log "ACTION NEEDED: Update serverExe in script to use this path" -Level "WARN" -Color Yellow
+            $found = $true
+        }
+    }
+    if (-not $found) {
+        Write-Log "No PalServer executable found anywhere under $SERVER_PATH" -Level "ERROR" -Color Red
+        Write-Log "SteamCMD may not have completed installation" -Level "ERROR" -Color Red
+    }
+}
+
+# Disk space
+$drive = Split-Path -Qualifier $SERVER_PATH
+$disk = Get-PSDrive ($drive.TrimEnd(':'))
+$freeGB = [math]::Round($disk.Free / 1GB, 2)
+Write-Log "Free disk on ${drive} : ${freeGB} GB" -Level $(if ($freeGB -lt 5) { "WARN" } else { "INFO" }) -Color $(if ($freeGB -lt 5) { "Yellow" } else { "White" })
+
+# Port availability
+$portInUse = Get-NetTCPConnection -LocalPort $PALWORLD_PORT -ErrorAction SilentlyContinue
+if ($portInUse) {
+    Write-Log "Port $PALWORLD_PORT is ALREADY IN USE (PID: $($portInUse.OwningProcess))" -Level "WARN" -Color Yellow
+} else {
+    Write-Log "Port $PALWORLD_PORT is available" -Level "INFO" -Color Green
+}
+
+# -----------------------------------------------------------------------
+# SECTION 4: SteamCMD Update
+# -----------------------------------------------------------------------
+Write-Log "STEAMCMD UPDATE" -Level "SECTION"
+
+$steamCmdArgs = @(
+    "+login", "anonymous",
+    "+force_install_dir", "`"$SERVER_PATH`"",
+    "+app_update", "2394010", "validate",
+    "+quit"
+)
+
+Write-Log "SteamCMD command: $STEAMCMD_PATH $($steamCmdArgs -join ' ')" -Level "DEBUG" -Color Gray
+Write-Log "Running SteamCMD update..." -Level "INFO"
+
+$steamStart = Get-Date
+$proc = Start-Process -FilePath $STEAMCMD_PATH -ArgumentList $steamCmdArgs -NoNewWindow -Wait -PassThru
+$steamDuration = [math]::Round(((Get-Date) - $steamStart).TotalSeconds, 1)
+
+Write-Log "SteamCMD exit code : $($proc.ExitCode)" -Level $(if ($proc.ExitCode -eq 0) { "INFO" } else { "ERROR" }) -Color $(if ($proc.ExitCode -eq 0) { "Green" } else { "Red" })
+Write-Log "SteamCMD duration  : ${steamDuration}s" -Level "INFO"
+
+if ($proc.ExitCode -ne 0) {
+    Throw-ErrorAndExit "SteamCMD failed (exit code $($proc.ExitCode)). Check your internet connection or SteamCMD path."
+}
+
+# -----------------------------------------------------------------------
+# SECTION 5: Server Launch
+# -----------------------------------------------------------------------
+Write-Log "SERVER LAUNCH" -Level "SECTION"
+
+Set-Location -Path $SERVER_PATH
+
+$serverArgs = @(
+    "-ServerName=`"$PALWORLD_SERVER_NAME`"",
+    "-port=$PALWORLD_PORT",
+    "-players=32",
+    "-log",
+    "-useperfthreads",
+    "-NoAsyncLoadingThread",
+    "-UseMultithreadForDS",
+    "EpicApp=PalServer",
+    "-publiclobby"
+)
+
+Write-Log "Executable  : $serverExe" -Level "DEBUG" -Color Gray
+Write-Log "Arguments   : $($serverArgs -join ' ')" -Level "DEBUG" -Color Gray
+Write-Log "File exists : $(Test-Path $serverExe)" -Level "DEBUG" -Color Gray
+Write-Log "Resolved    : $(Resolve-Path $serverExe -ErrorAction SilentlyContinue)" -Level "DEBUG" -Color Gray
+Write-Log "Working dir : $(Get-Location)" -Level "DEBUG" -Color Gray
+
+Write-Log "Launching PalServer.exe..." -Level "INFO"
+$serverProc = Start-Process -FilePath $serverExe -ArgumentList $serverArgs -NoNewWindow -PassThru
+
+if ($null -eq $serverProc) {
+    Throw-ErrorAndExit "Start-Process returned null - PalServer.exe could not be launched."
+}
+
+Start-Sleep -Seconds 3  # Brief pause to let process fail fast if it's going to
+
+if ($serverProc.HasExited) {
+    Write-Log "Process exited immediately with code: $($serverProc.ExitCode)" -Level "ERROR" -Color Red
+    Throw-ErrorAndExit "PalServer.exe terminated immediately after launch (exit code $($serverProc.ExitCode))."
+}
+
+Write-Log "PalServer.exe launched successfully (PID: $($serverProc.Id))" -Level "INFO" -Color Green
+Write-Log "Log saved to: $LOG_FILE" -Level "INFO" -Color Cyan
+
+Write-Host
+Write-Host "Server started successfully! You can close this window or press Enter to stop." -ForegroundColor Green
+Read-Host
