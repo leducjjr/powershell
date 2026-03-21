@@ -4,7 +4,7 @@ if ([Environment]::UserInteractive) { cls }
 # Set paths for SteamCMD and server installation - EDIT THE PATHS ACCORDINGLY
 $STEAMCMD_PATH = "C:\steamcmd\steamcmd.exe"
 $SERVER_PATH   = "C:\palworldserver"
-$PALWORLD_SERVER_NAME = "yourservernamehere"
+$PALWORLD_SERVER_NAME = "xenomenomop"
 $PALWORLD_PORT        = 8211
 
 # Log file path - named after this script with a timestamp
@@ -12,7 +12,7 @@ $SCRIPT_BASENAME = [System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.M
 $LOG_FILE = Join-Path $SERVER_PATH "${SCRIPT_BASENAME}_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
 
 # Detect whether the script is running interactively or as a scheduled task / service
-$IS_INTERACTIVE = [Environment]::UserInteractive -and [Console]::In.Peek() -ne -1
+$IS_INTERACTIVE = [Environment]::UserInteractive
 
 # -----------------------------------------------------------------------
 # Logging helper - writes to console and log file simultaneously
