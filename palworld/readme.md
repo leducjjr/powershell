@@ -82,10 +82,10 @@ Launches `PalServer.exe` with the following arguments:
 
 After launch, the script waits 3 seconds and checks whether the process has already exited — catching immediate crash-on-start scenarios before declaring success.
 
-Once running, the script keeps the window open and waits for input. Pressing **Enter** or **Ctrl+C** will shut down the server before exiting.
+Once running, the script keeps the window open and waits for input. Pressing **Enter** will shut down the server and exit cleanly.
 
 ### Server Shutdown
-When the script exits, it uses `taskkill /F /T` to force-terminate `PalServer.exe` and its entire process tree. This is necessary because PalServer spawns child processes on startup — killing only the parent would leave the actual server still running in the background. `taskkill /F /T` is compatible with Windows XP and later.
+When Enter is pressed, the script uses `taskkill /F /T` to force-terminate `PalServer.exe` and its entire process tree. This is necessary because PalServer spawns child processes on startup — killing only the parent would leave the actual server still running in the background. `taskkill /F /T` is compatible with Windows XP and later.
 
 ---
 
@@ -129,13 +129,3 @@ Another process (possibly a previous server instance) is holding the port. Use `
 
 **Script exits immediately without launching**
 Ensure you are running as Administrator. Some systems restrict `Start-Process` for non-admin users.
-
-# Example screenshots
-
-<img width="1115" height="628" alt="image" src="https://github.com/user-attachments/assets/4c6d6f0e-ed06-4a29-9396-b6f28ea1eb11" />
-
-<img width="1115" height="628" alt="image" src="https://github.com/user-attachments/assets/16f06ab5-e9f1-46d2-b044-2d606bebc17e" />
-
-<img width="1115" height="628" alt="image" src="https://github.com/user-attachments/assets/121ea916-ccf5-4c5f-b331-196745c48c92" />
-
-
