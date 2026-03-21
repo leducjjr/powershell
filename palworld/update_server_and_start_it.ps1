@@ -4,7 +4,7 @@ cls
 # Set paths for SteamCMD and server installation - EDIT THE PATHS ACCORDINGLY
 $STEAMCMD_PATH = "C:\steamcmd\steamcmd.exe"
 $SERVER_PATH   = "C:\palworldserver"
-$PALWORLD_SERVER_NAME = "yourservernamehere"
+$PALWORLD_SERVER_NAME = "yourservername here"
 $PALWORLD_PORT        = 8211
 
 # Log file path - named after this script with a timestamp
@@ -44,6 +44,72 @@ function Throw-ErrorAndExit {
     Write-Host
     Read-Host "Press Enter to exit"
     exit $ExitCode
+}
+
+# -----------------------------------------------------------------------
+# Network information helper - logs internal/external IPs and port reachability
+# -----------------------------------------------------------------------
+function Write-NetworkInfo {
+    param([string]$Label = "")
+
+    if ($Label) {
+        Write-Log "NETWORK INFORMATION ($Label)" -Level "SECTION"
+    } else {
+        Write-Log "NETWORK INFORMATION" -Level "SECTION"
+    }
+
+    # Internal IP addresses (exclude loopback)
+    $internalIPs = Get-NetIPAddress -AddressFamily IPv4 |
+        Where-Object { $_.IPAddress -notlike "127.*" -and $_.PrefixOrigin -ne "WellKnown" } |
+        Select-Object -ExpandProperty IPAddress
+
+    if ($internalIPs) {
+        foreach ($ip in $internalIPs) {
+            Write-Log "Internal address     : ${ip}:$PALWORLD_PORT" -Level "INFO"
+        }
+    } else {
+        Write-Log "Internal IP          : Could not determine" -Level "WARN" -Color Yellow
+    }
+
+    # External/public IP address
+    Write-Log "Resolving external IP..." -Level "INFO"
+    try {
+        $externalIP = (Invoke-RestMethod -Uri "https://api.ipify.org" -TimeoutSec 10).Trim()
+        Write-Log "External address     : ${externalIP}:$PALWORLD_PORT" -Level "INFO" -Color Green
+    } catch {
+        Write-Log "External IP          : Could not resolve - check internet connection ($_)" -Level "WARN" -Color Yellow
+        $externalIP = $null
+    }
+
+    # Check if the port is reachable from the internet
+    if ($externalIP) {
+        Write-Log "Checking external port reachability..." -Level "INFO"
+        try {
+            $portCheck = Invoke-RestMethod -Uri "https://api.canyouseeme.org/?port=$PALWORLD_PORT&action=Check" -TimeoutSec 15 -ErrorAction Stop
+            if ($portCheck -match "Success") {
+                Write-Log "External port $PALWORLD_PORT : REACHABLE from the internet" -Level "INFO" -Color Green
+            } else {
+                Write-Log "External port $PALWORLD_PORT : NOT REACHABLE - check firewall and router port forwarding" -Level "WARN" -Color Yellow
+            }
+        } catch {
+            # Fallback: try portchecker.co API
+            try {
+                $portCheck2 = Invoke-RestMethod -Uri "https://portchecker.co/api/v1/query" -Method Post `
+                    -ContentType "application/json" `
+                    -Body "{`"host`":`"$externalIP`",`"ports`":[$PALWORLD_PORT]}" `
+                    -TimeoutSec 15 -ErrorAction Stop
+                $portResult = $portCheck2.check | Where-Object { $_.port -eq $PALWORLD_PORT }
+                if ($portResult -and $portResult.status -eq $true) {
+                    Write-Log "External port $PALWORLD_PORT : REACHABLE from the internet" -Level "INFO" -Color Green
+                } else {
+                    Write-Log "External port $PALWORLD_PORT : NOT REACHABLE - check firewall and router port forwarding" -Level "WARN" -Color Yellow
+                }
+            } catch {
+                Write-Log "External port $PALWORLD_PORT : Reachability check failed ($_)" -Level "WARN" -Color Yellow
+                Write-Log "Manually verify port forwarding for UDP $PALWORLD_PORT on your router" -Level "WARN" -Color Yellow
+            }
+        }
+    }
 }
 
 # -----------------------------------------------------------------------
@@ -87,7 +153,12 @@ Write-Log "PALWORLD_SERVER_NAME : $PALWORLD_SERVER_NAME" -Level "INFO"
 Write-Log "PALWORLD_PORT        : $PALWORLD_PORT" -Level "INFO"
 
 # -----------------------------------------------------------------------
-# SECTION 3: Path / File Validation
+# SECTION 3: Network Information (Pre-Launch)
+# -----------------------------------------------------------------------
+Write-NetworkInfo -Label "Pre-Launch"
+
+# -----------------------------------------------------------------------
+# SECTION 4: Path / File Validation
 # -----------------------------------------------------------------------
 Write-Log "PATH AND FILE VALIDATION" -Level "SECTION"
 
@@ -158,7 +229,7 @@ if ($portInUse) {
 }
 
 # -----------------------------------------------------------------------
-# SECTION 4: SteamCMD Update
+# SECTION 5: SteamCMD Update
 # -----------------------------------------------------------------------
 Write-Log "STEAMCMD UPDATE" -Level "SECTION"
 
@@ -184,7 +255,7 @@ if ($proc.ExitCode -ne 0) {
 }
 
 # -----------------------------------------------------------------------
-# SECTION 5: Server Launch
+# SECTION 6: Server Launch
 # -----------------------------------------------------------------------
 Write-Log "SERVER LAUNCH" -Level "SECTION"
 
@@ -253,19 +324,16 @@ if ($serverProc.HasExited) {
 
 $serverPid = $serverProc.Id
 Write-Log "PalServer.exe launched successfully (PID: $serverPid)" -Level "INFO" -Color Green
+
+# -----------------------------------------------------------------------
+# SECTION 7: Network Information (Post-Launch)
+# -----------------------------------------------------------------------
+Write-NetworkInfo -Label "Post-Launch"
+
 Write-Log "Log saved to: $LOG_FILE" -Level "INFO" -Color Cyan
 
-# Trap Ctrl+C so it also cleans up before exiting
-[System.Console]::add_CancelKeyPress({
-    param($s, $e)
-    $e.Cancel = $true
-    Write-Log "Interrupt received - shutting down server..." -Level "INFO" -Color Yellow
-    Stop-ServerProcess -ProcessId $serverPid
-    exit 0
-})
-
 Write-Host
-Write-Host "Server started successfully! Press Enter or Ctrl+C to stop the server and exit." -ForegroundColor Green
+Write-Host "Server started successfully! Press Enter to stop the server and exit." -ForegroundColor Green
 Read-Host
 
 # User pressed Enter - stop the server
