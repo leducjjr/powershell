@@ -129,3 +129,13 @@ Another process (possibly a previous server instance) is holding the port. Use `
 
 **Script exits immediately without launching**
 Ensure you are running as Administrator. Some systems restrict `Start-Process` for non-admin users.
+
+# Example screenshots
+
+<img width="1115" height="628" alt="image" src="https://github.com/user-attachments/assets/4c6d6f0e-ed06-4a29-9396-b6f28ea1eb11" />
+
+<img width="1920" height="1032" alt="image" src="https://github.com/user-attachments/assets/c3f856fd-1a0b-4758-ac80-dad72a34843e" />
+
+<img width="1115" height="628" alt="image" src="https://github.com/user-attachments/assets/121ea916-ccf5-4c5f-b331-196745c48c92" />
+
+
