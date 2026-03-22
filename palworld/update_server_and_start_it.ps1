@@ -4,7 +4,7 @@ if ([Environment]::UserInteractive) { cls }
 # Set paths for SteamCMD and server installation - EDIT THE PATHS ACCORDINGLY
 $STEAMCMD_PATH = "C:\steamcmd\steamcmd.exe"
 $SERVER_PATH   = "C:\palworldserver"
-$PALWORLD_SERVER_NAME = "yourservernamehere"
+$PALWORLD_SERVER_NAME = "xenomenomop"
 $PALWORLD_PORT        = 8211
 
 # Log file path - named after this script with a timestamp
@@ -204,7 +204,57 @@ if ($portInUse) {
 }
 
 # -----------------------------------------------------------------------
-# SECTION 5: SteamCMD Update
+# SECTION 5: Config File
+# -----------------------------------------------------------------------
+Write-Log "CONFIG FILE" -Level "SECTION"
+
+$configFile = Join-Path $SERVER_PATH "Pal\Saved\Config\WindowsServer\PalWorldSettings.ini"
+
+if (Test-Path -Path $configFile -PathType Leaf) {
+    $configInfo = Get-Item $configFile
+    Write-Log "Config file location : $configFile" -Level "INFO" -Color Green
+    Write-Log "Config file modified : $($configInfo.LastWriteTime)" -Level "INFO"
+    Write-Log "Config file size     : $([math]::Round($configInfo.Length / 1KB, 2)) KB" -Level "INFO"
+
+    # Parse the OptionSettings=(...) line and log each parameter
+    $configContent = Get-Content $configFile -Raw
+    if ($configContent -match 'OptionSettings=\((.+)\)') {
+        $optionString = $matches[1]
+
+        # Split on commas that are NOT inside quotes to handle values like ServerName="My,Server"
+        $params = [System.Collections.Generic.List[string]]::new()
+        $current = ''
+        $inQuote = $false
+        foreach ($char in $optionString.ToCharArray()) {
+            if ($char -eq '"') { $inQuote = -not $inQuote }
+            if ($char -eq ',' -and -not $inQuote) {
+                $params.Add($current.Trim())
+                $current = ''
+            } else {
+                $current += $char
+            }
+        }
+        if ($current.Trim()) { $params.Add($current.Trim()) }
+
+        Write-Log "Config parameters    : $($params.Count) settings found" -Level "INFO"
+        foreach ($param in $params) {
+            if ($param -match '^(.+?)=(.*)$') {
+                $key   = $matches[1].Trim()
+                $value = $matches[2].Trim()
+                Write-Log "  $key = $value" -Level "INFO"
+            }
+        }
+    } else {
+        Write-Log "Config file exists but OptionSettings line was not found or is empty" -Level "WARN" -Color Yellow
+        Write-Log "Server will use default settings - copy DefaultPalWorldSettings.ini to $configFile to customize" -Level "WARN" -Color Yellow
+    }
+} else {
+    Write-Log "Config file NOT FOUND : $configFile" -Level "WARN" -Color Yellow
+    Write-Log "Server will use default settings - run PalServer.exe once to generate the file" -Level "WARN" -Color Yellow
+}
+
+# -----------------------------------------------------------------------
+# SECTION 6: SteamCMD Update
 # -----------------------------------------------------------------------
 Write-Log "STEAMCMD UPDATE" -Level "SECTION"
 
@@ -230,7 +280,7 @@ if ($proc.ExitCode -ne 0) {
 }
 
 # -----------------------------------------------------------------------
-# SECTION 6: Server Launch
+# SECTION 7: Server Launch
 # -----------------------------------------------------------------------
 Write-Log "SERVER LAUNCH" -Level "SECTION"
 
@@ -301,7 +351,7 @@ $serverPid = $serverProc.Id
 Write-Log "PalServer.exe launched successfully (PID: $serverPid)" -Level "INFO" -Color Green
 
 # -----------------------------------------------------------------------
-# SECTION 7: Network Information (Post-Launch)
+# SECTION 8: Network Information (Post-Launch)
 # -----------------------------------------------------------------------
 Write-NetworkInfo -Label "Post-Launch"
 
