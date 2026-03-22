@@ -4,7 +4,7 @@ if ([Environment]::UserInteractive) { cls }
 # Set paths for SteamCMD and server installation - EDIT THE PATHS ACCORDINGLY
 $STEAMCMD_PATH = "C:\steamcmd\steamcmd.exe"
 $SERVER_PATH   = "C:\palworldserver"
-$PALWORLD_SERVER_NAME = "yourservernamehere"
+$PALWORLD_SERVER_NAME = "xenomenomop"
 $PALWORLD_PORT        = 8211
 
 # Log file path - named after this script with a timestamp
@@ -84,27 +84,7 @@ function Write-NetworkInfo {
         $externalIP = $null
     }
 
-    # Check if the port is reachable from the internet using a direct TCP probe
-    # Note: Palworld uses UDP, but TCP probing still catches the most common issues
-    # such as missing port forwarding or firewall rules blocking the port entirely.
-    if ($externalIP) {
-        Write-Log "Checking external port reachability (TCP probe to $externalIP`:$PALWORLD_PORT)..." -Level "INFO"
-        try {
-            $tcpClient = New-Object System.Net.Sockets.TcpClient
-            $asyncResult = $tcpClient.BeginConnect($externalIP, $PALWORLD_PORT, $null, $null)
-            $waited = $asyncResult.AsyncWaitHandle.WaitOne(5000)  # 5 second timeout
-            if ($waited -and $tcpClient.Connected) {
-                Write-Log "External port $PALWORLD_PORT : REACHABLE from the internet (TCP)" -Level "INFO" -Color Green
-            } else {
-                Write-Log "External port $PALWORLD_PORT : NOT REACHABLE via TCP - verify firewall and router port forwarding" -Level "WARN" -Color Yellow
-                Write-Log "Note: Palworld uses UDP $PALWORLD_PORT - ensure UDP is also forwarded on your router" -Level "WARN" -Color Yellow
-            }
-            $tcpClient.Close()
-        } catch {
-            Write-Log "External port $PALWORLD_PORT : TCP probe failed ($_)" -Level "WARN" -Color Yellow
-            Write-Log "Note: Palworld uses UDP $PALWORLD_PORT - ensure UDP is forwarded on your router" -Level "WARN" -Color Yellow
-        }
-    }
+
 }
 
 # -----------------------------------------------------------------------
