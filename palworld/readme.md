@@ -41,7 +41,7 @@ Right-click the script and choose **Run with PowerShell**, or launch it from an 
 
 ## What It Does
 
-The script runs through five stages in order:
+The script runs through seven stages in order:
 
 ### 1. System Information
 Captures a snapshot of the host environment at the time of launch:
@@ -83,6 +83,15 @@ Launches `PalServer.exe` with the following arguments:
 After launch, the script waits 3 seconds and checks whether the process has already exited — catching immediate crash-on-start scenarios before declaring success.
 
 Once running, the script keeps the window open and waits for input. Pressing **Enter** will shut down the server and exit cleanly.
+
+### 6. Network Information
+Runs twice — once before the SteamCMD update (Pre-Launch) and once after the server starts (Post-Launch). Each run logs:
+
+- **Internal address** — all non-loopback IPv4 addresses on the machine combined with the configured port (e.g. `192.168.1.50:8211`). Multiple addresses are logged if the machine has more than one network adapter.
+- **External address** — your public IP resolved via `api.ipify.org`, combined with the configured port (e.g. `203.0.113.42:8211`). This is the address remote players use to connect.
+- **Port reachability** — a direct TCP socket probe from the machine to its own external IP on the configured port, with a 5-second timeout. This catches the most common issues such as missing port forwarding or firewall rules. A successful result means the port is reachable from the internet; a failure means port forwarding or firewall rules likely need attention.
+
+> **Note:** Palworld uses UDP for game traffic. The reachability check uses a TCP probe since UDP cannot be probed the same way. A passing TCP result is a strong indicator that UDP forwarding is also correct, but is not a guarantee. Always ensure both TCP and UDP are forwarded on your router for port 8211.
 
 ### Server Shutdown
 When Enter is pressed, the script uses `taskkill /F /T` to force-terminate `PalServer.exe` and its entire process tree. This is necessary because PalServer spawns child processes on startup — killing only the parent would leave the actual server still running in the background. `taskkill /F /T` is compatible with Windows XP and later.
@@ -129,13 +138,3 @@ Another process (possibly a previous server instance) is holding the port. Use `
 
 **Script exits immediately without launching**
 Ensure you are running as Administrator. Some systems restrict `Start-Process` for non-admin users.
-
-# Example screenshots
-
-<img width="1115" height="628" alt="image" src="https://github.com/user-attachments/assets/39cc25e9-b9ad-4228-a14f-5f92ebd6b60c" />
-
-<img width="1115" height="628" alt="image" src="https://github.com/user-attachments/assets/6507bd50-9dec-40de-8a3b-edfa5ef7b96f" />
-
-<img width="1115" height="628" alt="image" src="https://github.com/user-attachments/assets/984c2e33-7f0d-4449-90ce-18cfef78b956" />
-
-<img width="1115" height="628" alt="image" src="https://github.com/user-attachments/assets/bd293b01-0974-45a7-be1b-992ecd34e328" />
