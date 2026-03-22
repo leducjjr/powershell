@@ -89,9 +89,7 @@ Runs twice — once before the SteamCMD update (Pre-Launch) and once after the s
 
 - **Internal address** — all non-loopback IPv4 addresses on the machine combined with the configured port (e.g. `192.168.1.50:8211`). Multiple addresses are logged if the machine has more than one network adapter.
 - **External address** — your public IP resolved via `api.ipify.org`, combined with the configured port (e.g. `203.0.113.42:8211`). This is the address remote players use to connect.
-- **Port reachability** — a direct TCP socket probe from the machine to its own external IP on the configured port, with a 5-second timeout. This catches the most common issues such as missing port forwarding or firewall rules. A successful result means the port is reachable from the internet; a failure means port forwarding or firewall rules likely need attention.
 
-> **Note:** Palworld uses UDP for game traffic. The reachability check uses a TCP probe since UDP cannot be probed the same way. A passing TCP result is a strong indicator that UDP forwarding is also correct, but is not a guarantee. Always ensure both TCP and UDP are forwarded on your router for port 8211.
 
 ### Server Shutdown
 When Enter is pressed, the script uses `taskkill /F /T` to force-terminate `PalServer.exe` and its entire process tree. This is necessary because PalServer spawns child processes on startup — killing only the parent would leave the actual server still running in the background. `taskkill /F /T` is compatible with Windows XP and later.
@@ -138,13 +136,3 @@ Another process (possibly a previous server instance) is holding the port. Use `
 
 **Script exits immediately without launching**
 Ensure you are running as Administrator. Some systems restrict `Start-Process` for non-admin users.
-
-# Example screenshots
-
-<img width="1519" height="628" alt="image" src="https://github.com/user-attachments/assets/dea53936-5744-4ba1-a3d1-26dc4512abe8" />
-
-<img width="1519" height="628" alt="image" src="https://github.com/user-attachments/assets/e5658343-bc6f-4066-a50c-b75897db9213" />
-
-<img width="1519" height="628" alt="image" src="https://github.com/user-attachments/assets/99a06e05-50f0-4ef3-accd-75b66cd758dd" />
-
-<img width="1519" height="628" alt="image" src="https://github.com/user-attachments/assets/42379dca-211a-413e-a9f7-f8c44fd54ddc" />
