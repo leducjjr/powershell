@@ -41,7 +41,7 @@ Right-click the script and choose **Run with PowerShell**, or launch it from an 
 
 ## What It Does
 
-The script runs through seven stages in order:
+The script runs through eight stages in order:
 
 ### 1. System Information
 Captures a snapshot of the host environment at the time of launch:
@@ -83,6 +83,15 @@ Launches `PalServer.exe` with the following arguments:
 After launch, the script waits 3 seconds and checks whether the process has already exited — catching immediate crash-on-start scenarios before declaring success.
 
 Once running, the script keeps the window open and waits for input. Pressing **Enter** will shut down the server and exit cleanly.
+
+### 5. Config File
+Locates and reads `PalWorldSettings.ini` at `Pal\Saved\Config\WindowsServer\PalWorldSettings.ini` relative to the server path, and logs:
+- Full path, last-modified date, and file size
+- The name of every setting in the `OptionSettings` block
+
+Parameter values are intentionally not logged as they may contain sensitive information such as server passwords.
+
+If the file is missing, the script warns that the server will run with default settings and advises running `PalServer.exe` once to generate it.
 
 ### 6. Network Information
 Runs twice — once before the SteamCMD update (Pre-Launch) and once after the server starts (Post-Launch). Each run logs:
@@ -136,13 +145,3 @@ Another process (possibly a previous server instance) is holding the port. Use `
 
 **Script exits immediately without launching**
 Ensure you are running as Administrator. Some systems restrict `Start-Process` for non-admin users.
-
-# Example screenshots
-
-<img width="1519" height="628" alt="image" src="https://github.com/user-attachments/assets/678c9aff-b319-4e28-9ac1-93f28e86ce5d" />
-
-<img width="1519" height="628" alt="image" src="https://github.com/user-attachments/assets/4326abb2-30e1-4474-8a9c-b1564110a939" />
-
-<img width="1519" height="628" alt="image" src="https://github.com/user-attachments/assets/0118083e-8688-4a80-9b0b-18867c59e9da" />
-
-<img width="1519" height="628" alt="image" src="https://github.com/user-attachments/assets/336a81c8-976c-4515-b319-72f358ed5ef8" />
