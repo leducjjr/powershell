@@ -145,3 +145,21 @@ Another process (possibly a previous server instance) is holding the port. Use `
 
 **Script exits immediately without launching**
 Ensure you are running as Administrator. Some systems restrict `Start-Process` for non-admin users.
+
+# Example screenshots
+
+<img width="1519" height="628" alt="image" src="https://github.com/user-attachments/assets/b5ff0c0b-e137-44a7-8297-316e5601bb5c" />
+
+<img width="1519" height="628" alt="image" src="https://github.com/user-attachments/assets/8c5b5532-87fb-44d2-93f8-8ea860360e16" />
+
+<img width="1519" height="628" alt="image" src="https://github.com/user-attachments/assets/43698a66-2bb2-466c-b5f9-ec65de71650b" />
+
+<img width="1519" height="628" alt="image" src="https://github.com/user-attachments/assets/8c587422-5efa-404a-a08f-fe672e5ac217" />
+
+<img width="1519" height="628" alt="image" src="https://github.com/user-attachments/assets/adff4a0d-453d-4645-827d-c8f96576d526" />
+
+<img width="1519" height="628" alt="image" src="https://github.com/user-attachments/assets/cc6ff4bf-f2e0-4e4f-b7f2-302ddf6b9bac" />
+
+<img width="1519" height="628" alt="image" src="https://github.com/user-attachments/assets/e5ce14c1-cbf3-477c-aa60-b297dd8fa781" />
+
+<img width="1519" height="628" alt="image" src="https://github.com/user-attachments/assets/cef39a75-69b4-4805-aedb-dd9623b91f91" />
