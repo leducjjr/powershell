@@ -229,8 +229,8 @@ if ($portInUse) {
 Write-Log "STEAMCMD UPDATE" -Level "SECTION"
 
 $steamCmdArgs = @(
-    "+login", "anonymous",
     "+force_install_dir", "`"$SERVER_PATH`"",
+    "+login", "anonymous",
     "+app_update", "2394010", "validate",
     "+quit"
 )
